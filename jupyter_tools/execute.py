@@ -3,10 +3,10 @@ import re
 import time
 import uuid
 import websocket
-from config import WS_URL, TOKEN
+from config import get_server_config
 
 
-def execute_code(kernel_id: str, code: str, timeout: int = 60) -> dict:
+def execute_code(kernel_id: str, code: str, timeout: int = 60, server_id: str = None) -> dict:
     """
     在指定 Kernel 中执行代码
 
@@ -18,9 +18,10 @@ def execute_code(kernel_id: str, code: str, timeout: int = 60) -> dict:
             "displays": list,
         }
     """
+    cfg = get_server_config(server_id)
     ws = websocket.create_connection(
-        f"{WS_URL}/api/kernels/{kernel_id}/channels",
-        header=[f"Authorization: token {TOKEN}"],
+        f"{cfg['WS_URL']}/api/kernels/{kernel_id}/channels",
+        header=[f"Authorization: token {cfg['TOKEN']}"],
         timeout=timeout
     )
 
@@ -100,20 +101,20 @@ def execute_code(kernel_id: str, code: str, timeout: int = 60) -> dict:
     }
 
 
-def execute_file(kernel_id: str, filepath: str, timeout: int = 60) -> dict:
+def execute_file(kernel_id: str, filepath: str, timeout: int = 60, server_id: str = None) -> dict:
     """读取 .py 文件内容并执行"""
     with open(filepath, "r", encoding="utf-8") as f:
         code = f.read()
     print(f"[📄 执行文件] {filepath}")
-    return execute_code(kernel_id, code, timeout)
+    return execute_code(kernel_id, code, timeout, server_id)
 
 
-def execute_cells(kernel_id: str, cells: list, stop_on_error: bool = True) -> list:
+def execute_cells(kernel_id: str, cells: list, stop_on_error: bool = True, server_id: str = None) -> list:
     """按顺序执行多个代码块"""
     results = []
     for i, cell in enumerate(cells):
         print(f"\n[▶ 执行 Cell {i+1}/{len(cells)}]")
-        result = execute_code(kernel_id, cell)
+        result = execute_code(kernel_id, cell, server_id=server_id)
         result["cell_index"] = i
         result["code"] = cell
         results.append(result)

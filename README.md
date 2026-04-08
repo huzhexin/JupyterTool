@@ -1,6 +1,6 @@
 # JupyterTool
 
-让 Claude Code 直接操作远程 Jupyter 服务器——执行代码、管理 Kernel、读写文件、调试脚本，全程用自然语言驱动。目前个人使用，可能存在bug，出问题别找我 ^_^
+让 Claude Code 直接操作远程 Jupyter 服务器——执行代码、管理 Kernel、读写文件、调试脚本，全程用自然语言驱动。支持同时管理多台 Jupyter 服务器，每个对话窗口可独立限定访问范围。目前个人使用，可能存在bug，出问题别找我 ^_^
 
 ## 项目结构
 
@@ -9,14 +9,15 @@ jupyterTool/
 ├── config.ini              # 服务器配置 + 权限配置
 ├── install.sh              # 一键安装 Skill
 ├── jupyter_tools/          # 核心工具代码
-│   ├── config.py           # 读取 config.ini
-│   ├── kernel.py           # Kernel 管理 + 状态持久化
+│   ├── config.py           # 多服务器配置读取
+│   ├── kernel.py           # Kernel 管理 + 状态持久化（按服务器隔离）
 │   ├── execute.py          # 代码执行（WebSocket）
 │   ├── notebook.py         # Notebook & 远程文件操作
 │   ├── permissions.py      # 权限控制（路径白名单、删除开关）
 │   ├── file.py             # 本地结果保存
 │   ├── cli.py              # 命令行入口
-│   └── .kernel_state.json  # 自动生成，记录当前 Kernel ID
+│   ├── .kernel_state.json  # 自动生成，按服务器记录 Kernel ID
+│   └── ..session_servers   # 自动生成，记录本 session 的服务器范围
 └── skill/
     └── SKILL.md            # Claude Code Skill 定义
 ```
@@ -26,10 +27,21 @@ jupyterTool/
 编辑项目根目录的 `config.ini`：
 
 ```ini
-[jupyter]
-host = your-host
-port = 8420
+[servers]
+# 默认使用的服务器 ID
+default = server1
+
+[server1]
+host  = your-host
+port  = 8420
 token = your-jupyter-token
+name  = 训练机A          # 可选，显示名称
+
+[server2]
+host  = another-host
+port  = 8888
+token = another-token
+name  = 训练机B
 
 [permissions]
 # 允许操作的根目录（逗号分隔），留空表示不限制
@@ -96,19 +108,19 @@ Claude 会：
 
 ---
 
-**场景 4：查看服务器文件**
+**场景 4：操作另一台服务器**
 
-> "查看一下 /mnt/data/ 下有哪些文件"
+> "切换到 server2，跑一下 nvidia-smi 看看 GPU 状态"
 
-Claude 会在 Kernel 里执行 `os.listdir()` 返回文件列表。
+Claude 会在 server2 上新建 Kernel 并执行，与 server1 的 Kernel 完全独立。
 
 ---
 
-**场景 5：管理 Kernel**
+**场景 5：限定本对话只访问某台服务器**
 
-> "把当前 Kernel 重启一下，清空变量"
-> "看看现在有几个 Kernel 在跑"
-> "把没用的 Kernel 都删掉"
+> "这个窗口只允许操作 server1，帮我设置一下"
+
+Claude 会执行 `session set server1`，此后本对话所有操作都限定在 server1。
 
 ---
 
@@ -118,7 +130,7 @@ Claude 会自动管理 Kernel 生命周期，无需手动干预：
 
 ```
 你说："跑一下这段代码"
-  → Claude 检查是否有已保存的 Kernel
+  → Claude 检查是否有已保存的 Kernel（按服务器隔离）
   → 有：直接复用（变量/导入状态保持）
   → 没有：自动新建并保存
 
@@ -131,6 +143,34 @@ Claude 会自动管理 Kernel 生命周期，无需手动干预：
 ## 命令参考（手动调用）
 
 如果需要手动调用，所有命令在 `jupyter_tools/` 目录下执行：
+
+### 全局 `--server` 参数
+
+所有命令均支持 `--server <ID>` 指定目标服务器，不填则使用 `config.ini` 中的默认服务器：
+
+```bash
+python cli.py --server server2 execute --code "print('hello')"
+python cli.py --server server2 kernel list
+```
+
+### 服务器管理
+
+```bash
+python cli.py server list                                             # 列出所有服务器
+python cli.py server add --id server2 --host 10.0.0.1 --port 8888 --token xxx --name "训练机B"
+python cli.py server remove --id server2                             # 删除服务器
+python cli.py server default --id server2                            # 设置默认服务器
+```
+
+### Session 范围管理
+
+每个对话窗口可独立限定可访问的服务器（写入 `.session_servers` 文件）：
+
+```bash
+python cli.py session set server1 server2   # 本 session 只允许访问 server1/server2
+python cli.py session list                  # 查看当前 session 范围
+python cli.py session clear                 # 清除限制（恢复访问所有服务器）
+```
 
 ### 执行代码
 
@@ -184,9 +224,13 @@ python cli.py permissions          # 查看当前权限配置
 
 ❌ 路径不在允许范围内: /outside/path
    允许的目录: /mnt/your/work/dir
+
+❌ 服务器 'server3' 不在本 session 的允许列表中
+   允许的服务器: server1, server2
 ```
 
 **权限规则优先级：**
 1. `allowed_dirs` 为空 → 不限制路径
 2. `allow_delete = false` → 所有删除操作被拦截
 3. `protected_dirs` → 即使 `allow_delete = true`，保护目录下也禁止删除
+4. `.session_servers` 存在 → 只允许访问其中列出的服务器
