@@ -36,11 +36,15 @@ token = your-jupyter-token
 
 ### 第一步：安装 Skill
 
-将 `skill/SKILL.md` 安装到 Claude Code：
+在项目根目录执行，自动安装 Skill 并记录工具路径：
 
 ```bash
-cp -r skill/  ~/.claude/skills/jupyter-notebook/
+bash install.sh
 ```
+
+安装脚本会：
+1. 复制 `skill/` 到 `~/.claude/skills/jupyter-notebook/`
+2. 将当前 `jupyter_tools/` 的绝对路径写入 `~/.claude/skills/jupyter-notebook/.tools_path`，供 Claude 调用时定位工具
 
 ### 第二步：直接说话
 

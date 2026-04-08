@@ -5,15 +5,20 @@ description: 操作远程 Jupyter 服务器，在 kernel 上执行 Python 代码
 
 # Jupyter Notebook 工具集
 
-工具目录：`/Users/huzhexin/Documents/jupyterTool/jupyter_tools/`
-配置文件：`/Users/huzhexin/Documents/jupyterTool/config.ini`
+工具目录由安装时写入 `~/.claude/skills/jupyter-notebook/.tools_path`，读取方式：
+
+```bash
+TOOLS=$(cat ~/.claude/skills/jupyter-notebook/.tools_path)
+```
+
+配置文件：`$TOOLS/../config.ini`（即项目根目录下的 `config.ini`）
 
 所有操作通过 `cli.py` 执行。**默认不传 `--kernel` 时自动复用已保存的 Kernel，无需每次新建。**
 
 ## 快速参考
 
 ```bash
-TOOLS=/Users/huzhexin/Documents/jupyterTool/jupyter_tools
+TOOLS=$(cat ~/.claude/skills/jupyter-notebook/.tools_path)
 
 # 执行代码（自动复用已保存 kernel）
 python $TOOLS/cli.py execute --code "print('hello')"
@@ -78,4 +83,4 @@ python $TOOLS/cli.py file delete --path data/old.py
 
 - 不传 `--kernel` 时自动读取 `.kernel_state.json` 中保存的 ID
 - 多行代码用 `--file` 而不是 `--content`（避免 shell 转义问题）
-- 服务器地址和 token 在 `config.ini` 中配置
+- 服务器地址和 token 在项目根目录的 `config.ini` 中配置
