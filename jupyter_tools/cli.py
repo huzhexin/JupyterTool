@@ -30,6 +30,7 @@ from notebook import (
     create_notebook, write_file, read_file, delete_file
 )
 from file import save_result, save_markdown_report
+from permissions import print_permissions, PermissionError as JupyterPermissionError
 
 
 def main():
@@ -62,6 +63,9 @@ def main():
     f.add_argument("action", choices=["list", "read", "write", "delete"])
     f.add_argument("--path", help="文件或目录路径")
     f.add_argument("--content", help="写入内容（write 时使用）")
+
+    # permissions 子命令
+    subparsers.add_parser("permissions", help="查看当前权限配置")
 
     args = parser.parse_args()
 
@@ -187,6 +191,14 @@ def main():
                 sys.exit(1)
             delete_file(args.path)
 
+    # 权限配置
+    elif args.command == "permissions":
+        print_permissions()
+
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except JupyterPermissionError as e:
+        print(e)
+        sys.exit(1)

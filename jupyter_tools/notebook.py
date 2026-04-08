@@ -1,6 +1,7 @@
 import json
 import requests
 from config import BASE_URL, HEADERS
+from permissions import check_path_allowed, check_delete_allowed, check_write_allowed
 
 
 def list_notebooks(path: str = "") -> list:
@@ -19,6 +20,8 @@ def list_notebooks(path: str = "") -> list:
 
 def list_directory(path: str = "") -> list:
     """列出目录内容（文件和子目录）"""
+    if path:
+        check_path_allowed(path)
     resp = requests.get(
         f"{BASE_URL}/api/contents/{path}",
         headers=HEADERS
@@ -42,6 +45,7 @@ def read_notebook(path: str) -> dict:
 
 def save_notebook(path: str, notebook: dict):
     """保存 notebook 到服务器"""
+    check_write_allowed(path)
     resp = requests.put(
         f"{BASE_URL}/api/contents/{path}",
         headers=HEADERS,
@@ -56,6 +60,7 @@ def create_notebook(path: str, cells: list = None):
     创建新 notebook
     cells: [{"type": "code"/"markdown", "source": "..."}]
     """
+    check_write_allowed(path)
     nb_cells = []
     for cell in (cells or []):
         nb_cells.append({
@@ -122,12 +127,14 @@ def get_all_code(path: str) -> str:
 
 def delete_notebook(path: str):
     """删除 notebook"""
+    check_delete_allowed(path)
     requests.delete(f"{BASE_URL}/api/contents/{path}", headers=HEADERS)
     print(f"[🗑 Notebook 已删除] {path}")
 
 
 def write_file(path: str, content: str):
     """在 Jupyter 服务器上写入/创建文本文件"""
+    check_write_allowed(path)
     resp = requests.put(
         f"{BASE_URL}/api/contents/{path}",
         headers=HEADERS,
@@ -149,5 +156,6 @@ def read_file(path: str) -> str:
 
 def delete_file(path: str):
     """删除 Jupyter 服务器上的文件"""
+    check_delete_allowed(path)
     requests.delete(f"{BASE_URL}/api/contents/{path}", headers=HEADERS)
     print(f"[🗑 文件已删除] {path}")
