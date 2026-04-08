@@ -6,12 +6,14 @@
 
 ```
 jupyterTool/
-├── config.ini              # 服务器配置（host / port / token）
+├── config.ini              # 服务器配置 + 权限配置
+├── install.sh              # 一键安装 Skill
 ├── jupyter_tools/          # 核心工具代码
 │   ├── config.py           # 读取 config.ini
 │   ├── kernel.py           # Kernel 管理 + 状态持久化
 │   ├── execute.py          # 代码执行（WebSocket）
 │   ├── notebook.py         # Notebook & 远程文件操作
+│   ├── permissions.py      # 权限控制（路径白名单、删除开关）
 │   ├── file.py             # 本地结果保存
 │   ├── cli.py              # 命令行入口
 │   └── .kernel_state.json  # 自动生成，记录当前 Kernel ID
@@ -25,9 +27,19 @@ jupyterTool/
 
 ```ini
 [jupyter]
-host = 33.32.31.46
+host = your-host
 port = 8420
 token = your-jupyter-token
+
+[permissions]
+# 允许操作的根目录（逗号分隔），留空表示不限制
+allowed_dirs = /mnt/your/work/dir
+
+# 是否允许删除操作（true/false）
+allow_delete = false
+
+# 即使开了 allow_delete，这些目录下也永远禁止删除
+protected_dirs = /mnt/your/important/dir
 ```
 
 ## Vibe Coding 教程
@@ -157,3 +169,24 @@ python cli.py file read   --path data/script.py
 python cli.py file write  --path data/script.py --content "print('hi')"
 python cli.py file delete --path data/old.py
 ```
+
+### 权限管理
+
+```bash
+python cli.py permissions          # 查看当前权限配置
+```
+
+写入、删除操作会自动校验权限，违规时直接报错：
+
+```
+❌ 删除操作已被禁用（allow_delete = false）
+   如需开启，请修改 config.ini 中的 allow_delete = true
+
+❌ 路径不在允许范围内: /outside/path
+   允许的目录: /mnt/your/work/dir
+```
+
+**权限规则优先级：**
+1. `allowed_dirs` 为空 → 不限制路径
+2. `allow_delete = false` → 所有删除操作被拦截
+3. `protected_dirs` → 即使 `allow_delete = true`，保护目录下也禁止删除
