@@ -1,6 +1,6 @@
 # JupyterTool
 
-让 Claude Code 直接操作远程 Jupyter 服务器——执行代码、管理 Kernel、读写文件、调试脚本，全程用自然语言驱动。
+让 Claude Code 直接操作远程 Jupyter 服务器——执行代码、管理 Kernel、读写文件、调试脚本，全程用自然语言驱动。目前个人使用，可能存在bug，出问题别找我 ^_^
 
 ## 项目结构
 
