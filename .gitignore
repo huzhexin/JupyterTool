@@ -1,3 +1,8 @@
 __pycache__/
 *.pyc
 jupyter_tools/.kernel_state.json
+.kernel_state.json
+.task_state.json
+.task_logs/
+.callback_server.pid
+.session_servers
